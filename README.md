@@ -25,3 +25,27 @@ end
 Indexes:
     "pokemons_pkey" PRIMARY KEY, btree (id)
 ```
+
+> Create a table with some database-specific data types
+
+```elixir
+create table(:pokemons) do
+  add :name, :varchar, null: false
+  add :level, :smallint, null: false, default: 1
+  add :special, :decimal, null: false, default: 1.0
+  add :wild, :boolean, null: false, default: true
+end
+```
+
+```sql
+                               Table "public.pokemons"
+ Column  |       Type        |                       Modifiers
+---------+-------------------+-------------------------------------------------------
+ id      | integer           | not null default nextval('pokemons_id_seq'::regclass)
+ name    | character varying | not null
+ level   | smallint          | not null default 1
+ special | numeric           | not null default 1.0
+ wild    | boolean           | not null default true
+Indexes:
+    "pokemons_pkey" PRIMARY KEY, btree (id)
+```
