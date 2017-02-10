@@ -166,3 +166,80 @@ end
 Indexes:
     "labels_pkey" PRIMARY KEY, btree (id)
 ```
+
+> Create tables with a one-to-many relationship
+
+```elixir
+create table(:trainers) do
+  add :name, :varchar, null: false
+end
+
+create table(:pokemons) do
+  add :name, :string, null: false
+  add :level, :integer, null: false, default: 1
+  add :trainer_id, references(:trainers)
+end
+```
+
+```sql
+                              Table "public.trainers"
+ Column |       Type        |                       Modifiers
+--------+-------------------+-------------------------------------------------------
+ id     | integer           | not null default nextval('trainers_id_seq'::regclass)
+ name   | character varying | not null
+Indexes:
+    "trainers_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "pokemons" CONSTRAINT "pokemons_trainer_id_fkey" FOREIGN KEY (trainer_id) REFERENCES trainers(id)
+
+                                   Table "public.pokemons"
+   Column   |          Type          |                       Modifiers
+------------+------------------------+-------------------------------------------------------
+ id         | integer                | not null default nextval('pokemons_id_seq'::regclass)
+ name       | character varying(255) | not null
+ level      | integer                | not null default 1
+ trainer_id | integer                |
+Indexes:
+    "pokemons_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "pokemons_trainer_id_fkey" FOREIGN KEY (trainer_id) REFERENCES trainers(id)
+```
+
+> Create tables with a custom foreign-key one-to-many relationship
+
+```elixir
+create table(:trainers, primary_key: false) do
+  add :identifier, :uuid, primary_key: true
+  add :name, :varchar, null: false
+end
+
+create table(:pokemons) do
+  add :name, :string, null: false
+  add :level, :integer, null: false, default: 1
+  add :trainer_id, references(:trainers, column: :identifier, type: :uuid)
+end
+```
+
+```sql
+          Table "public.trainers"
+   Column   |       Type        | Modifiers
+------------+-------------------+-----------
+ identifier | uuid              | not null
+ name       | character varying | not null
+Indexes:
+    "trainers_pkey" PRIMARY KEY, btree (identifier)
+Referenced by:
+    TABLE "pokemons" CONSTRAINT "pokemons_trainer_id_fkey" FOREIGN KEY (trainer_id) REFERENCES trainers(identifier)
+
+                                   Table "public.pokemons"
+   Column   |          Type          |                       Modifiers
+------------+------------------------+-------------------------------------------------------
+ id         | integer                | not null default nextval('pokemons_id_seq'::regclass)
+ name       | character varying(255) | not null
+ level      | integer                | not null default 1
+ trainer_id | uuid                   |
+Indexes:
+    "pokemons_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "pokemons_trainer_id_fkey" FOREIGN KEY (trainer_id) REFERENCES trainers(identifier)
+```
