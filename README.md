@@ -93,3 +93,25 @@ end
 Indexes:
     "trainers_pkey" PRIMARY KEY, btree (id)
 ```
+
+> Create a table with custom timestamps with defaults
+
+```elixir
+create table(:trainers) do
+  add :name, :varchar, null: false
+  add :created_at, :timestamptz, null: false, default: fragment("now()")
+  add :updated_at, :timestamptz, null: false, default: fragment("now()")
+end
+```
+
+```sql
+                                    Table "public.trainers"
+   Column   |           Type           |                       Modifiers
+------------+--------------------------+-------------------------------------------------------
+ id         | integer                  | not null default nextval('trainers_id_seq'::regclass)
+ name       | character varying        | not null
+ created_at | timestamp with time zone | not null default now()
+ updated_at | timestamp with time zone | not null default now()
+Indexes:
+    "trainers_pkey" PRIMARY KEY, btree (id)
+```
