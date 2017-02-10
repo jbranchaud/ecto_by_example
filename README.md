@@ -115,3 +115,54 @@ end
 Indexes:
     "trainers_pkey" PRIMARY KEY, btree (id)
 ```
+
+> Create a table without a primary key
+
+```elixir
+create table(:labels, primary_key: false) do
+  add :name, :varchar, null: false
+end
+```
+
+```sql
+         Table "public.labels"
+ Column |       Type        | Modifiers
+--------+-------------------+-----------
+ name   | character varying | not null
+```
+
+> Create a table with a natural primary key
+
+```elixir
+create table(:labels, primary_key: false) do
+  add :name, :varchar, primary_key: true
+end
+```
+
+```sql
+         Table "public.labels"
+ Column |       Type        | Modifiers
+--------+-------------------+-----------
+ name   | character varying | not null
+Indexes:
+    "labels_pkey" PRIMARY KEY, btree (name)
+```
+
+> Create a table with a UUID primary key
+
+```elixir
+create table(:labels, primary_key: false) do
+  add :id, :uuid, primary_key: true
+  add :name, :varchar, null: false
+end
+```
+
+```sql
+         Table "public.labels"
+ Column |       Type        | Modifiers
+--------+-------------------+-----------
+ id     | uuid              | not null
+ name   | character varying | not null
+Indexes:
+    "labels_pkey" PRIMARY KEY, btree (id)
+```
