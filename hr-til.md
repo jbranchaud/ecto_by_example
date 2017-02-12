@@ -168,3 +168,55 @@ UPDATE "developers" AS d0 SET "email" = 'developer' || d0."id" || '@example.com'
 The result is a tuple. The first part tells us 32 records were updated. The
 second part gives us a list of the update fields specified in the
 `:returning` clause.
+
+> Who are the top 10 posters, in terms of quantity of posts?
+
+We can start by creating a partial query joining developers to posts. We'll
+call it `developers_and_posts`.
+
+```elixir
+> developers_and_posts = from(d in "developers", join: p in "posts", on: p.developer_id == d.id)
+#Ecto.Query<from d in "developers", join: p in "posts",
+ on: p.developer_id == d.id>
+```
+
+Using `developers_and_posts` we can group by developer's `id`, selecting for
+the `username` and count of posts for each developer.
+
+```elixir
+> Repo.all(from([d, p] in developers_and_posts, group_by: d.id, select: {d.username, count(p.id)}))
+
+17:03:27.265 [debug] QUERY OK source="developers" db=8.4ms
+SELECT d0."username", count(p1."id") FROM "developers" AS d0 INNER JOIN "posts" AS p1 ON p1."developer_id" = d0."id" GROUP BY d0."id" []
+[{"developer14", 6}, {"developer25", 43}, {"developer32", 1},
+ {"developer27", 2}, {"developer8", 332}, {"developer17", 1},
+ {"developer15", 23}, {"developer1", 1}, {"developer10", 18},
+ {"developer26", 78}, {"developer11", 15}, {"developer4", 130},
+ {"developer18", 14}, {"developer30", 10}, {"developer16", 3},
+ {"developer33", 1}, {"developer6", 3}, {"developer19", 9}, {"developer29", 82},
+ {"developer2", 236}, {"developer23", 10}, {"developer31", 5},
+ {"developer20", 8}, {"developer5", 3}, {"developer13", 3}, {"developer22", 12},
+ {"developer9", 10}, {"developer24", 4}, {"developer7", 3}]
+```
+
+This leaves us with a jumble of results. We want the top 10 posters which
+means we need to order the results by post count and then truncate the list
+at 10.
+
+We can achieve the ordering with an `order_by` clause. Limiting our results
+can be done with a `limit` clause.
+
+```elixir
+> Repo.all(from([d, p] in developers_and_posts,
+            group_by: d.id,
+            order_by: [desc: count(p.id)],
+            limit: 10,
+            select: {d.username, count(p.id)}))
+
+17:17:51.752 [debug] QUERY OK source="developers" db=5.2ms
+SELECT d0."username", count(p1."id") FROM "developers" AS d0 INNER JOIN "posts" AS p1 ON p1."developer_id" = d0."id" GROUP BY d0."id" ORDER BY count(p1."id") DESC LIMIT 10 []
+[{"developer8", 332}, {"developer2", 236}, {"developer4", 130},
+ {"developer29", 82}, {"developer26", 78}, {"developer25", 43},
+ {"developer15", 23}, {"developer10", 18}, {"developer11", 15},
+ {"developer18", 14}]
+```
