@@ -125,3 +125,46 @@ column that we can average on.
 SELECT avg(s0."post_count") FROM (SELECT count(p0."id") AS "post_count" FROM "posts" AS p0 INNER JOIN "developers" AS d1 ON p0."developer_id" = d1."id" GROUP BY d1."id") AS s0 []
 #Decimal<36.7586206896551724>
 ```
+
+> Scrubbing Data
+
+We are working with a production database, so it would be nice to scrub any
+personal or sensitive data (e.g. emails and names).
+
+First, let's build up a query that declares what fields we want to update
+and how we want to update them.
+
+```elixir
+> dev_updates = from(d in devs, update: [
+    set: [
+               email: fragment("'developer' || ? || '@example.com'", d.id),
+            username: fragment("'developer' || ?", d.id),
+      twitter_handle: fragment("'at_developer' || ?", d.id),
+          slack_name: fragment("'slack_developer' || ?", d.id)
+    ]
+  ])
+#Ecto.Query<from d in "developers",
+ update: [set: [email: fragment("'developer' || ? || '@example.com'", d.id), username: fragment("'developer' || ?", d.id), twitter_handle: fragment("'at_developer' || ?", d.id), slack_name: fragment("'slack_developer' || ?", d.id)]]>
+```
+
+Then we can evaluate this query with the `Repo.update_all` function. Using
+the `:returning` option, we can see some of the updated results.
+
+```elixir
+> Repo.update_all(dev_updates, [], returning: [:email, :username])
+
+16:29:08.220 [debug] QUERY OK source="developers" db=6.0ms
+UPDATE "developers" AS d0 SET "email" = 'developer' || d0."id" || '@example.com', "username" = 'developer' || d0."id", "twitter_handle" = 'at_developer' || d0."id", "slack_name" = 'slack_developer' || d0."id" RETURNING d0."email", d0."username" []
+{32,
+ [%{email: "developer6@example.com", username: "developer6"},
+  %{email: "developer4@example.com", username: "developer4"},
+  %{email: "developer3@example.com", username: "developer3"},
+  %{email: "developer10@example.com", username: "developer10"},
+  %{email: "developer12@example.com", username: "developer12"},
+  %{email: "developer14@example.com", username: "developer14"},
+  ...]}
+```
+
+The result is a tuple. The first part tells us 32 records were updated. The
+second part gives us a list of the update fields specified in the
+`:returning` clause.
