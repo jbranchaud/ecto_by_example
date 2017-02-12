@@ -221,3 +221,47 @@ SELECT d0."username", count(p1."id") FROM "developers" AS d0 INNER JOIN "posts" 
  {"developer15", 23}, {"developer10", 18}, {"developer11", 15},
  {"developer18", 14}]
 ```
+
+### What are the top 10 most liked Elixir posts?
+
+We can create a partial query, `top_posts`, that represents the most liked
+posts.
+
+```elixir
+> top_posts = from(p in "posts", order_by: [desc: p.likes])
+#Ecto.Query<from p in "posts", order_by: [desc: p.likes]>
+```
+
+We can then build on this by joining in the `channels` table to filter by
+posts posted to the Elixir channel. This is accomplished with a `where`
+clause on channel `name`. We'll call this `top_elixir_posts`.
+
+```elixir
+> top_elixir_posts = from(p in top_posts,
+                      join: c in "channels",
+                      on: p.channel_id == c.id,
+                      where: c.name == "Elixir")
+#Ecto.Query<from p in "posts", join: c in "channels", on: p.channel_id == c.id,
+ where: c.name == "Elixir", order_by: [desc: p.likes]>
+```
+
+Now that we've filtered on the channel name, we don't have to think about
+the `channels` table or a binding to it anymore. We'll just limit the
+results to 10 and select the columns we are interested in.
+
+```elixir
+> Repo.all(from(p in top_elixir_posts, limit: 10, select: {p.likes, p.title}))
+
+17:58:50.679 [debug] QUERY OK source="posts" db=2.7ms
+SELECT p0."likes", p0."title" FROM "posts" AS p0 INNER JOIN "channels" AS c1 ON p0."channel_id" = c1."id" WHERE (c1."name" = 'elixir') ORDER BY p0."likes" DESC LIMIT 10 []
+[{15, "Named Captures with Elixir Regular Expressions"},
+ {14, "Create A Date With The Date Sigil"},
+ {14, "Requiring Keys For Structs"},
+ {14, "Execute Raw SQL In An Ecto Migration"},
+ {14, "Invoke Elixir Functions with Apply"},
+ {12, "Weird Operator Uses in Elixir"},
+ {12, "List Functions For A Module"},
+ {12, "Three data types that go `into` a Map"},
+ {12, "Pry in Elixir Phoenix"},
+ {12, "Capture IO.puts in ExUnit tests"}]
+```
