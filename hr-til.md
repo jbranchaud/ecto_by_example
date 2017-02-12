@@ -29,8 +29,9 @@ SELECT count(*) FROM "developers" AS d0 []
 > developer_count = from d in "developers", select: %{count: count(d.id)}
 #Ecto.Query<from d in "developers", select: %{count: count(d.id)}>
 
-> Repo.one(from p in subquery(post_count), join: d in subquery(develope
-r_count), select: %{post_count: p.count, developer_count: d.count})
+> Repo.one(from p in subquery(post_count),
+            join: d in subquery(developer_count),
+            select: %{post_count: p.count, developer_count: d.count})
 
 17:39:26.373 [debug] QUERY OK db=12.4ms
 SELECT s0."count", s1."count" FROM (SELECT count(p0."id") AS "count" FROM "posts" AS p0) AS s0 INNER JOIN (SELECT count(d0."id") AS "count" FROM "developers" AS d0) AS s1 ON TRUE []
@@ -44,8 +45,8 @@ counts the number of posts for each.
 
 ```elixir
 > post_counts = from(p in "posts",
-                      group_by: p.developer_id,
-                      select: %{post_count: count(p.id), developer_id: p.developer_id})
+                 group_by: p.developer_id,
+                 select: %{post_count: count(p.id), developer_id: p.developer_id})
 #Ecto.Query<from p in "posts", group_by: [p.developer_id],
  select: %{post_count: count(p.id), developer_id: p.developer_id}>
 ```
