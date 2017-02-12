@@ -37,7 +37,7 @@ SELECT s0."count", s1."count" FROM (SELECT count(p0."id") AS "count" FROM "posts
 %{developer_count: 32, post_count: 1066}
 ```
 
-> How many posts on average?
+> How many posts on average per developer?
 
 First, we need a query that will give us the post count for each developer.
 
