@@ -100,7 +100,7 @@ First, we need a query that will give us the post count for each developer.
 We can see the kind of result this query produces with `Repo.all`.
 
 ```elixir
-iex(68)> Repo.all(post_counts)
+> Repo.all(post_counts)
 
 18:53:48.591 [debug] QUERY OK source="posts" db=12.8ms queue=1.6ms
 SELECT count(p0."id") FROM "posts" AS p0 INNER JOIN "developers" AS d1 ON p0."developer_id" = d1."id" GROUP BY d1."id" []
@@ -119,7 +119,7 @@ average. By subquerying our query, the `post_count` alias is exposed as the
 column that we can average on.
 
 ```elixir
-iex(69)> Repo.aggregate(subquery(post_counts), :avg, :post_count)
+> Repo.aggregate(subquery(post_counts), :avg, :post_count)
 
 18:53:57.912 [debug] QUERY OK db=14.5ms
 SELECT avg(s0."post_count") FROM (SELECT count(p0."id") AS "post_count" FROM "posts" AS p0 INNER JOIN "developers" AS d1 ON p0."developer_id" = d1."id" GROUP BY d1."id") AS s0 []
