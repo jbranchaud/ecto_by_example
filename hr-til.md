@@ -1,6 +1,6 @@
 # hr-til
 
-#### How many posts are there?
+### How many posts are there?
 
 ```elixir
 > Repo.one(from p in "posts", select: count(p.id))
@@ -10,7 +10,7 @@
 SELECT count(p0."id") FROM "posts" AS p0 []
 ```
 
-#### How many developers are there?
+### How many developers are there?
 
 ```elixir
 > Repo.one(from d in "developers", select: fragment("count(*)"))
@@ -20,7 +20,7 @@ SELECT count(*) FROM "developers" AS d0 []
 32
 ```
 
-#### How many developers and posts are there?
+### How many developers and posts are there?
 
 ```elixir
 > post_count = from p in "posts", select: %{count: count(p.id)}
@@ -37,7 +37,7 @@ SELECT s0."count", s1."count" FROM (SELECT count(p0."id") AS "count" FROM "posts
 %{developer_count: 32, post_count: 1066}
 ```
 
-#### How many posts on average per developer?
+### How many posts on average per developer?
 
 First, let's write a query that groups are posts by `developer_id` and
 counts the number of posts for each.
@@ -86,7 +86,7 @@ SELECT avg(s0."post_count") FROM (SELECT count(p0."id") AS "post_count", p0."dev
 #Decimal<36.7586206896551724>
 ```
 
-#### How many posts on average per developer (unnecessarily using joins)?
+### How many posts on average per developer (unnecessarily using joins)?
 
 First, we need a query that will give us the post count for each developer.
 
@@ -126,7 +126,7 @@ SELECT avg(s0."post_count") FROM (SELECT count(p0."id") AS "post_count" FROM "po
 #Decimal<36.7586206896551724>
 ```
 
-#### Scrubbing Data
+### Scrubbing Data
 
 We are working with a production database, so it would be nice to scrub any
 personal or sensitive data (e.g. emails and names).
@@ -169,7 +169,7 @@ The result is a tuple. The first part tells us 32 records were updated. The
 second part gives us a list of the update fields specified in the
 `:returning` clause.
 
-#### Who are the top 10 posters, in terms of quantity of posts?
+### Who are the top 10 posters, in terms of quantity of posts?
 
 We can start by creating a partial query joining developers to posts. We'll
 call it `developers_and_posts`.
