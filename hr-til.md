@@ -265,3 +265,26 @@ SELECT p0."likes", p0."title" FROM "posts" AS p0 INNER JOIN "channels" AS c1 ON 
  {12, "Pry in Elixir Phoenix"},
  {12, "Capture IO.puts in ExUnit tests"}]
 ```
+
+### What is the oldest (first) Elixir post?
+
+We can start with a join between the `posts` and `channels` tables in order
+to filter by posts in the Elixir channel. We'll call this partial query
+`elixir_posts`.
+
+```elixir
+> elixir_posts = from(p in "posts", join: c in "channels", on: c.id == p.channel_id, where: c.name == "elixir")
+#Ecto.Query<from p in "posts", join: c in "channels", on: c.id == p.channel_id,
+ where: c.name == "elixir">
+```
+
+We then order our `elixir_posts` by the date they were created, select the
+fields we are interested in, and limit the result set to 1.
+
+```elixir
+> Repo.all(from(p in elixir_posts, order_by: [asc: p.created_at], select: {p.created_at, p.title}, limit: 1))
+
+18:05:45.846 [debug] QUERY OK source="posts" db=4.4ms
+SELECT p0."created_at", p0."title" FROM "posts" AS p0 INNER JOIN "channels" AS c1 ON c1."id" = p0."channel_id" WHERE (c1."name" = 'elixir') ORDER BY p0."created_at" LIMIT 1 []
+[{{{2015, 10, 9}, {13, 57, 4, 20409}}, "Pry in Elixir Phoenix"}]
+```
