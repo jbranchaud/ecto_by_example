@@ -288,3 +288,167 @@ fields we are interested in, and limit the result set to 1.
 SELECT p0."created_at", p0."title" FROM "posts" AS p0 INNER JOIN "channels" AS c1 ON c1."id" = p0."channel_id" WHERE (c1."name" = 'elixir') ORDER BY p0."created_at" LIMIT 1 []
 [{{{2015, 10, 9}, {13, 57, 4, 20409}}, "Pry in Elixir Phoenix"}]
 ```
+
+### What is the channel and title of each developer's most liked post in 2016?
+
+This query will involve `posts`, `developers`, and `channels` so let's start
+with a partial query joining all of them.
+
+```elixir
+from(p in "posts",
+     join: d in "developers", on: d.id == p.developer_id,
+     join: c in "channels", on: c.id == p.channel_id)
+#Ecto.Query<from p in "posts", join: d in "developers",
+ on: d.id == p.developer_id, join: c in "channels", on: c.id == p.channel_id>
+```
+
+We can then take advantage of combining the `distinct on (...)` feature of
+our database with an `order_by` clause.
+
+```elixir
+from([posts, devs, channels] in posts_devs_channels(),
+     distinct: devs.id,
+     order_by: [desc: posts.likes],
+     select: %{
+       dev: devs.username,
+       channel: channels.name,
+       title: posts.title
+     }
+)
+#Ecto.Query<from p in "posts", join: d in "developers", on: true,
+ join: c in "channels", on: d.id == p.developer_id and c.id == p.channel_id,
+ order_by: [desc: p.likes], distinct: [asc: d.id],
+ select: %{dev: d.username, channel: c.name, title: p.title}>
+```
+
+ The effect we can get is one result for each developer, specifically the
+ _most liked_ post because of the ordering. You'll also notice in the
+ resulting Query struct that there is an implicit ordering applied to the
+ column of the `distinct` clause.
+
+We still need to constrain the posts to just those published in 2016. Ecto's
+`DateTime` module can help with that.
+
+```elixir
+from([posts, devs, channels] in posts_devs_channels(),
+     distinct: devs.id,
+     order_by: [desc: posts.likes],
+     where: posts.created_at > ^Ecto.DateTime.cast!({{2016,1,1},{0,0,0}}),
+     where: posts.created_at < ^Ecto.DateTime.cast!({{2017,1,1},{0,0,0}}),
+     select: %{
+       dev: devs.username,
+       channel: channels.name,
+       title: posts.title
+     }
+)
+#Ecto.Query<from p in "posts", join: d in "developers",
+ on: d.id == p.developer_id, join: c in "channels", on: c.id == p.channel_id,
+ where: p.created_at > ^#Ecto.DateTime<2016-01-01 00:00:00>,
+ where: p.created_at < ^#Ecto.DateTime<2017-01-01 00:00:00>,
+ order_by: [desc: p.likes], distinct: [asc: d.id],
+ select: %{dev: d.username, channel: c.name, title: p.title}>
+```
+
+Anytime I find myself writing a SQL query with a `where` clause like this, I
+have to stop myself. It is a bit verbose and the intent isn't as clear as it
+could be. What I'd like to communicate to future readers of the query is
+that post's `created_at` date should fall _between_ 2016 and 2017. 
+
+PostgreSQL has `between` syntax, so let's use it.
+
+```elixir
+from([posts, devs, channels] in posts_devs_channels(),
+     distinct: devs.id,
+     order_by: [desc: posts.likes],
+     where: fragment("? between ? and ?",
+                     posts.created_at,
+                     ^Ecto.DateTime.cast!({{2016,1,1},{0,0,0}}),
+                     ^Ecto.DateTime.cast!({{2017,1,1},{0,0,0}})
+                   ),
+     select: %{
+       dev: devs.username,
+       channel: channels.name,
+       title: posts.title
+     }
+)
+#Ecto.Query<from p in "posts", join: d in "developers",
+ on: d.id == p.developer_id, join: c in "channels", on: c.id == p.channel_id,
+ where: fragment("? between ? and ?", p.created_at, ^#Ecto.DateTime<2016-01-01 00:00:00>, ^#Ecto.DateTime<2017-01-01 00:00:00>),
+ order_by: [desc: p.likes], distinct: [asc: d.id],
+ select: %{dev: d.username, channel: c.name, title: p.title}>
+```
+
+Instead of spreading the date filter across two different `where` clauses,
+we've combined them with the `between` construct that clearly communicates
+the bounds of our query.
+
+Unfortunately, the readability of our `between` construct gets a little
+obfuscated by the way our `fragment` is constructed. We can clean this up by
+creating a custom Ecto Query function for the `between` construct.
+
+```elixir
+defmodule CustomFunctions do
+  defmacro between(operand, left, right) do
+    quote do
+      fragment("? between ? and ?", unquote(operand), unquote(left), unquote(right))
+    end
+  end
+end
+```
+
+We can then use that by importing it (`import CustomFunctions`) and then
+updating our query.
+
+```elixir
+from([posts, devs, channels] in posts_devs_channels(),
+     distinct: devs.id,
+     order_by: [desc: posts.likes],
+     where: between(posts.created_at,
+                    ^Ecto.DateTime.cast!({{2016,1,1},{0,0,0}}),
+                    ^Ecto.DateTime.cast!({{2017,1,1},{0,0,0}})
+                  ),
+     select: %{
+       dev: devs.username,
+       channel: channels.name,
+       title: posts.title
+     }
+)
+#Ecto.Query<from p in "posts", join: d in "developers",
+ on: d.id == p.developer_id, join: c in "channels", on: c.id == p.channel_id,
+ where: fragment("? between ? and ?", p.created_at, ^#Ecto.DateTime<2016-01-01 00:00:00>, ^#Ecto.DateTime<2017-01-01 00:00:00>),
+ order_by: [desc: p.likes], distinct: [asc: d.id],
+ select: %{dev: d.username, channel: c.name, title: p.title}>
+```
+
+After all this iteration on our query, let's look at the results:
+
+```elixir
+Repo.all(from([posts, devs, channels] in posts_devs_channels(),
+     distinct: devs.id,
+     order_by: [desc: posts.likes],
+     where: between(posts.created_at,
+                    ^Ecto.DateTime.cast!({{2016,1,1},{0,0,0}}),
+                    ^Ecto.DateTime.cast!({{2017,1,1},{0,0,0}})
+                  ),
+     select: %{
+       dev: devs.username,
+       channel: channels.name,
+       title: posts.title
+     }
+))
+
+08:20:12.639 [debug] QUERY OK source="posts" db=12.6ms queue=0.1ms
+SELECT DISTINCT ON (d1."id") d1."username", c2."name", p0."title" FROM "posts" AS p0 INNER JOIN "developers" AS d1 ON d1."id" = p0."developer_id" INNER JOIN "channels" AS c2 ON c2."id" = p0."channel_id" WHERE (p0."created_at" between $1 and $2) ORDER BY d1."id", p0."likes" DESC [{{2016, 1, 1}, {0, 0, 0, 0}}, {{2017, 1, 1}, {0, 0, 0, 0}}]
+[%{channel: "elixir", dev: "developer2",
+   title: "Invoke Elixir Functions with Apply"},
+ %{channel: "workflow", dev: "developer4", title: "Ternary shortcut in PHP"},
+ %{channel: "vim", dev: "developer5",
+   title: "Use colorcolumn to visualize maximum line length"},
+ %{channel: "ruby", dev: "developer6",
+   title: "Ruby optional arguments can come before required"},
+ %{channel: "ruby", dev: "developer7",
+   title: "Using pessimistic gem version to catch betas"},
+ %{channel: "vim", dev: "developer8", title: "Delete To The End Of The Line"},
+ %{channel: "command-line", dev: "developer9",
+   title: "Pull up the man page for a command while typing"},
+```
