@@ -295,7 +295,7 @@ This query will involve `posts`, `developers`, and `channels` so let's start
 with a partial query joining all of them.
 
 ```elixir
-from(p in "posts",
+posts_devs_channels = from(p in "posts",
      join: d in "developers", on: d.id == p.developer_id,
      join: c in "channels", on: c.id == p.channel_id)
 #Ecto.Query<from p in "posts", join: d in "developers",
@@ -321,10 +321,10 @@ from([posts, devs, channels] in posts_devs_channels(),
  select: %{dev: d.username, channel: c.name, title: p.title}>
 ```
 
- The effect we can get is one result for each developer, specifically the
- _most liked_ post because of the ordering. You'll also notice in the
- resulting Query struct that there is an implicit ordering applied to the
- column of the `distinct` clause.
+The effect we can get is one result for each developer, specifically the
+_most liked_ post because of the ordering. You'll also notice in the
+resulting Query struct that there is an implicit ordering applied to the
+column of the `distinct` clause.
 
 We still need to constrain the posts to just those published in 2016. Ecto's
 `DateTime` module can help with that.
