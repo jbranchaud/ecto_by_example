@@ -38,6 +38,50 @@ SELECT s0."count", s1."count" FROM (SELECT count(p0."id") AS "count" FROM "posts
 %{developer_count: 32, post_count: 1066}
 ```
 
+### How many posts by channel?
+
+First, let's join channels to posts.
+
+```elixir
+> posts_and_channels = from(p in "posts",
+    join: c in "channels",
+    on: p.channel_id == c.id)
+#Ecto.Query<from p in "posts", join: c in "channels", on: p.channel_id == c.id>
+```
+
+We can then use the `posts_and_channels` partial query to group by channel
+name selecting for the channel name and post count of each.
+
+```elixir
+> Repo.all(from([p,c] in posts_and_channels,
+    group_by: c.name,
+    select: {count(p.id), c.name}))
+
+16:12:31.539 [debug] QUERY OK source="posts" db=6.8ms
+SELECT count(p0."id"), c1."name" FROM "posts" AS p0 INNER JOIN "channels" AS c1 ON p0."channel_id" = c1."id" GROUP BY c1."name" []
+[{13, "clojure"}, {5, "react"}, {102, "rails"}, {201, "vim"}, {59, "workflow"},
+ {110, "command-line"}, {121, "sql"}, {73, "elixir"}, {1, "erlang"},
+ {6, "design"}, {28, "testing"}, {5, "go"}, {15, "mobile"}, {67, "javascript"},
+ {32, "devops"}, {125, "ruby"}, {17, "html-css"}, {63, "git"}, {23, "emberjs"}]
+```
+
+We can clean up the results a bit by ordering on the count of posts.
+
+```elixir
+> Repo.all(from([p,c] in posts_and_channels,
+    group_by: c.name,
+    order_by: [desc: count(p.id)],
+    select: {count(p.id), c.name}))
+
+16:13:43.516 [debug] QUERY OK source="posts" db=7.3ms
+SELECT count(p0."id"), c1."name" FROM "posts" AS p0 INNER JOIN "channels" AS c1 ON p0."channel_id" = c1."id" GROUP BY c1."name" ORDER BY count(p0."id") DESC []
+[{201, "vim"}, {125, "ruby"}, {121, "sql"}, {110, "command-line"},
+ {102, "rails"}, {73, "elixir"}, {67, "javascript"}, {63, "git"},
+ {59, "workflow"}, {32, "devops"}, {28, "testing"}, {23, "emberjs"},
+ {17, "html-css"}, {15, "mobile"}, {13, "clojure"}, {6, "design"}, {5, "go"},
+ {5, "react"}, {1, "erlang"}]
+```
+
 ### How many posts on average per developer?
 
 First, let's write a query that groups are posts by `developer_id` and
